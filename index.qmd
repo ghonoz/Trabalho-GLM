@@ -1,0 +1,143 @@
+---
+title: "MANOVA em análise de arroz"
+author: Gabriel Lopes Rubinho - RA 125009
+format: 
+  revealjs:
+    fontsize: 25pt
+    transition: fade
+    title-slide-attributes: 
+      data-background-image: arroz1.png
+      data-background-opacity: "0.3"
+editor: visual
+lang: pt
+---
+
+## Introdução
+
+::: {#fig-elephants layout-ncol=2}
+
+![Osmancik](arroz_osmancik.jpg){#Osmancik}
+
+![Cammeo](cammeo_rice.jpg){#Cammeo}
+
+Arroz de estudo
+
+:::
+
+## Sobre o banco de dados {background-image=arroz1.png background-opacity="0.25"}
+**Área** - A área total ocupada pelo grão de arroz na imagem.  
+**Perímetro** - A medida ao longo da borda externa do grão.  
+**Comprimento do núcleo** - O comprimento da maior dimensão do grão.  
+**Largura do núcleo** - A largura da maior dimensão perpendicular ao   comprimento.  
+**Coeficiente de assimetria** - Um valor que descreve a simetria do grão.  
+**Comprimento do kernel** - A distância entre os extremos do grão.  
+**Taxa de diâmetro equivalente**- Uma medida da uniformidade do tamanho do grão em relação ao seu diâmetro.  
+
+Não há registros nulos no banco de dados, e há cerca de 1630 registros de arroz Cammeo e 2180 do arroz Osmancik.
+
+```{r}
+df <- read.csv('df.csv', sep = ';')
+colnames(df) <- c('Área', 'Perímetro', "Comprimento do núcleo", 
+                  'Largura do núcleo', 'Coeficiente de assimetria',
+                  'Comprimento de kernel', 'Taxa de diâmetro equivalente', 'Classe')
+
+```
+
+## Sobre o banco de dados {background-image=arroz1.png background-opacity="0.25"}
+
+```{r}
+knitr::kable(df[c(1:7),])
+```
+
+
+
+```{r, echo=FALSE, eval=FALSE}
+library("MVN")
+
+
+set.seed(123)
+
+
+result = mvn(data = df, subset = "Classe", mvnTest = "hz",
+             univariateTest = "AD", univariatePlot = "histogram",
+             multivariatePlot = "qq", multivariateOutlierMethod = "adj",
+             showOutliers = TRUE, showNewData = TRUE)
+
+result$multivariateNormality # Multivariate Normality Result
+result$univariateNormality   # Univariate Normality Result
+result$Descriptives          # Descriptives
+outliers <- result$multivariateOutliers  # Multivariate Outliers
+
+
+sem <- result$newData  
+
+# New data without multivariate outliers
+sem_outliers <- rbind(sem$Cammeo, sem$Osmancik)
+
+sem_outliers$Classe <- c(rep("Cammeo", 1153), rep("Osmancik", 1508))
+nrow(sem_outliers)
+
+df$Num <- seq(1, nrow(df))
+
+outliers_index <- rbind(outliers$Cammeo, outliers$Osmancik)
+colnames(outliers_index) <- c("Num", 'Mahalanobis Distance', "Outlier")
+
+
+outliers <- merge(outliers_index, df, by = "Num")
+G1 <- sem_outliers
+G1 <- G1[, c(ncol(G1), 1:(ncol(G1)-1))]
+
+G2 <- outliers
+G2 <- G2[, c(ncol(G2), 1:(ncol(G2)-1))]
+
+```
+
+## Separação {background-image=arroz1.png background-opacity="0.25"}
+A separação dos dados outliers foi feita utilizando o pacote `mvn`, e foi usado o método de Henze-Zirkler.  
+
+Em relação aos não outliers, há 2661 registros, sendo destes 1153 Cammeo e 1508 Osmancik, e em relação aos outliers, há 1149 registros, sendo 477 Cammeo e 672 Osmancik.  
+
+
+## Análise nos dados {background-image=arroz1.png background-opacity="0.25"}
+```{r}
+G1 <- read.csv('g1.csv', sep = ',')
+model <- manova(as.matrix(G1[,2:ncol(G1)]) ~ G1$Classe, data = G1)
+
+```
+
+```{r eval=TRUE, echo=TRUE}
+summary(model, test = "Wilks", intercept = FALSE)
+
+summary(model, test = "Pillai", intercept = FALSE)
+
+summary(model, test = "Hotelling-Lawley", intercept = FALSE)
+
+summary(model, test = "Roy", intercept = FALSE)
+```
+
+
+## Análise dos dados
+
+```{r}
+G2 <- read.csv('g2.csv', sep = ',')
+model <- manova(as.matrix(G2[,2:ncol(G2)]) ~ G2$Classe, data = G2)
+```
+
+```{r eval=TRUE, echo=TRUE}
+summary(model, test = "Wilks", intercept = FALSE)
+
+summary(model, test = "Pillai", intercept = FALSE)
+
+summary(model, test = "Hotelling-Lawley", intercept = FALSE)
+
+summary(model, test = "Roy", intercept = FALSE)
+```
+
+
+
+
+
+
+
+
+
